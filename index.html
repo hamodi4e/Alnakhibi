@@ -43,7 +43,11 @@
             text-align: center;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
+
+        /* Hidden image for vCard generation logic */
+        #profile-img-source { display: none; }
 
         .header {
             background: var(--white);
@@ -52,6 +56,7 @@
             justify-content: center;
         }
 
+        /* Logo styling */
         .logo-img { width: 100%; max-width: 220px; height: auto; }
 
         .profile-info { padding: 20px 20px 30px 20px; }
@@ -102,15 +107,29 @@
             justify-content: center;
             gap: 10px;
         }
+        
+        /* Loading spinner for vCard generation */
+        .spinner {
+            display: none;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .footer { padding-bottom: 20px; font-size: 0.7rem; color: #aaa; }
     </style>
 </head>
 <body>
 
+    <img id="profile-img-source" src="profile.jpg" alt="Profile Source" crossorigin="anonymous">
+
     <div class="card-container">
         <div class="header">
-            <img src="logo.png" alt="iSTELLAR" class="logo-img">
+            <img src="logo.png" alt="iSTELLAR" class="logo-img" onerror="this.onerror=null; this.src='logo.PNG';">
         </div>
 
         <div class="profile-info">
@@ -130,7 +149,7 @@
                 <span>Email</span>
             </a>
 
-            <a href="https://wa.me/966553369448" target="_blank" class="action-btn">
+            <a href="https://wa.me/966553369448?text=Hello%20Mohammed%2C%20I%20just%20scanned%20your%20iSTELLAR%20card%2C%20I%20am..." target="_blank" class="action-btn">
                 <i class="fab fa-whatsapp"></i>
                 <span>WhatsApp</span>
             </a>
@@ -142,8 +161,10 @@
         </div>
 
         <div class="save-btn-container">
-            <button class="save-btn" onclick="downloadVCard()">
-                <i class="fas fa-user-plus"></i> Save to Contacts
+            <button class="save-btn" id="saveBtn" onclick="generateAndDownloadVCard()">
+                <i class="fas fa-user-plus" id="btnIcon"></i> 
+                <div class="spinner" id="btnSpinner"></div>
+                <span id="btnText">Save to Contacts</span>
             </button>
         </div>
 
@@ -151,24 +172,84 @@
     </div>
 
     <script>
-        function downloadVCard() {
-            const vCardData = [
-                'BEGIN:VCARD',
-                'VERSION:3.0',
-                'N:AlNakhibi;Mohammed;;;',
-                'FN:Mohammed AlNakhibi',
-                'ORG:iSTELLAR',
-                'TITLE:G21 FCR (BAMO)',
-                'TEL;TYPE=CELL,VOICE:+966553369448',
-                'EMAIL;TYPE=WORK:Mohammed.Alnakhibi@iStellar.Tech',
-                'END:VCARD'
-            ].join('\n');
-            const blob = new Blob([vCardData], { type: 'text/vcard' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.download = "Mohammed_AlNakhibi.vcf";
-            link.href = url;
-            link.click();
+        async function generateAndDownloadVCard() {
+            // UI Feedback: Show loading
+            const btn = document.getElementById('saveBtn');
+            const icon = document.getElementById('btnIcon');
+            const spinner = document.getElementById('btnSpinner');
+            const text = document.getElementById('btnText');
+            
+            icon.style.display = 'none';
+            spinner.style.display = 'block';
+            text.textContent = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                // 1. Convert Profile Image to Base64
+                let photoString = '';
+                try {
+                    const imgElement = document.getElementById('profile-img-source');
+                    // Check if image actually loaded
+                    if (imgElement.complete && imgElement.naturalHeight !== 0) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = imgElement.naturalWidth;
+                        canvas.height = imgElement.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(imgElement, 0, 0);
+                        // Get Base64 data (removing the 'data:image/jpeg;base64,' part)
+                        const dataURL = canvas.toDataURL('image/jpeg');
+                        const base64Data = dataURL.split(',')[1];
+                        photoString = 'PHOTO;ENCODING=b;TYPE=JPEG:' + base64Data;
+                    }
+                } catch (e) {
+                    console.log("Image processing failed, saving without photo", e);
+                }
+
+                // 2. Build vCard Content
+                let vCardData = [
+                    'BEGIN:VCARD',
+                    'VERSION:3.0',
+                    'N:AlNakhibi;Mohammed;;;',
+                    'FN:Mohammed AlNakhibi',
+                    'ORG:iSTELLAR',
+                    'TITLE:G21 FCR (BAMO)',
+                    'TEL;TYPE=CELL,VOICE:+966553369448',
+                    'EMAIL;TYPE=WORK:Mohammed.Alnakhibi@iStellar.Tech',
+                    'URL:https://istellar.tech'
+                ];
+
+                // Add photo if found
+                if (photoString) {
+                    vCardData.push(photoString);
+                }
+
+                vCardData.push('END:VCARD');
+                
+                // Join with standard CRLF
+                const vCardFinal = vCardData.join('\n');
+
+                // 3. Create Download
+                const blob = new Blob([vCardFinal], { type: 'text/vcard' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = "Mohammed_AlNakhibi.vcf";
+                link.href = url;
+                link.click();
+                
+                // Cleanup
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+
+            } catch (error) {
+                alert("Error saving contact. Please try again.");
+            }
+
+            // Reset UI
+            setTimeout(() => {
+                icon.style.display = 'inline-block';
+                spinner.style.display = 'none';
+                text.textContent = 'Save to Contacts';
+                btn.disabled = false;
+            }, 1000);
         }
     </script>
 </body>
