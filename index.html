@@ -15,7 +15,6 @@
         :root {
             --brand-red: #8B0000; 
             --brand-dark: #1F1F1F; 
-            --brand-bg: #F5F5F5;   
             --white: #ffffff;
             --shadow: 0 8px 30px rgba(0,0,0,0.08);
         }
@@ -24,13 +23,56 @@
 
         body {
             font-family: 'Roboto', sans-serif;
-            background-color: var(--brand-bg);
             color: var(--brand-dark);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            position: relative; 
+            overflow-x: hidden;
+            background-color: #F5F5F5; 
+        }
+
+        /* --- 1. CORNER LOGOS (G21) - 100% Opacity --- */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                url('g21-logo.png'), 
+                url('g21-logo.png'), 
+                url('g21-logo.png'), 
+                url('g21-logo.png');
+            background-position: 
+                20px 20px, 
+                calc(100% - 20px) 20px, 
+                20px calc(100% - 20px), 
+                calc(100% - 20px) calc(100% - 20px);
+            background-repeat: no-repeat;
+            background-size: 100px auto;
+            opacity: 1.0; 
+            z-index: -1;
+        }
+
+        /* --- 2. CENTER LOGO (iSTELLAR) - 0.08 Opacity --- */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('logo.png');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: 60%; 
+            opacity: 0.08; 
+            z-index: -1;
+            pointer-events: none;
         }
 
         .card-container {
@@ -44,9 +86,9 @@
             display: flex;
             flex-direction: column;
             position: relative;
+            z-index: 1; 
         }
 
-        /* Hidden image for vCard generation logic */
         #profile-img-source { display: none; }
 
         .header {
@@ -56,7 +98,6 @@
             justify-content: center;
         }
 
-        /* Logo styling */
         .logo-img { width: 100%; max-width: 220px; height: auto; }
 
         .profile-info { padding: 20px 20px 30px 20px; }
@@ -64,7 +105,6 @@
         .title { font-size: 1rem; font-weight: 500; color: var(--brand-red); margin-bottom: 4px; }
         .company { font-size: 0.85rem; color: #777; letter-spacing: 1px; text-transform: uppercase; }
 
-        /* Actions Grid */
         .actions-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -90,7 +130,6 @@
         .action-btn span { font-size: 0.8rem; font-weight: 500; }
         .action-btn:active { transform: scale(0.95); background-color: #f1f1f1; }
 
-        /* Save Contact Button */
         .save-btn-container { padding: 0 25px 35px 25px; }
         .save-btn {
             background: var(--brand-dark);
@@ -108,7 +147,6 @@
             gap: 10px;
         }
         
-        /* Loading spinner for vCard generation */
         .spinner {
             display: none;
             border: 3px solid rgba(255,255,255,0.3);
@@ -173,7 +211,6 @@
 
     <script>
         async function generateAndDownloadVCard() {
-            // UI Feedback: Show loading
             const btn = document.getElementById('saveBtn');
             const icon = document.getElementById('btnIcon');
             const spinner = document.getElementById('btnSpinner');
@@ -185,27 +222,23 @@
             btn.disabled = true;
 
             try {
-                // 1. Convert Profile Image to Base64
                 let photoString = '';
                 try {
                     const imgElement = document.getElementById('profile-img-source');
-                    // Check if image actually loaded
                     if (imgElement.complete && imgElement.naturalHeight !== 0) {
                         const canvas = document.createElement('canvas');
                         canvas.width = imgElement.naturalWidth;
                         canvas.height = imgElement.naturalHeight;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(imgElement, 0, 0);
-                        // Get Base64 data (removing the 'data:image/jpeg;base64,' part)
                         const dataURL = canvas.toDataURL('image/jpeg');
                         const base64Data = dataURL.split(',')[1];
                         photoString = 'PHOTO;ENCODING=b;TYPE=JPEG:' + base64Data;
                     }
                 } catch (e) {
-                    console.log("Image processing failed, saving without photo", e);
+                    console.log("Image processing failed", e);
                 }
 
-                // 2. Build vCard Content
                 let vCardData = [
                     'BEGIN:VCARD',
                     'VERSION:3.0',
@@ -218,32 +251,22 @@
                     'URL:https://istellar.tech'
                 ];
 
-                // Add photo if found
-                if (photoString) {
-                    vCardData.push(photoString);
-                }
-
+                if (photoString) vCardData.push(photoString);
                 vCardData.push('END:VCARD');
                 
-                // Join with standard CRLF
                 const vCardFinal = vCardData.join('\n');
-
-                // 3. Create Download
                 const blob = new Blob([vCardFinal], { type: 'text/vcard' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.download = "Mohammed_AlNakhibi.vcf";
                 link.href = url;
                 link.click();
-                
-                // Cleanup
                 setTimeout(() => URL.revokeObjectURL(url), 100);
 
             } catch (error) {
-                alert("Error saving contact. Please try again.");
+                alert("Error saving contact.");
             }
 
-            // Reset UI
             setTimeout(() => {
                 icon.style.display = 'inline-block';
                 spinner.style.display = 'none';
